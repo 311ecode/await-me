@@ -1,92 +1,226 @@
 # 🛡️ await-me
 
-The high-performance, pre-bundled distribution of [`await-me-ts`](https://www.npmjs.com/package/await-me-ts). Declarative async error handling for pure JavaScript and production environments.
+**Production-ready, zero-dependency async error handling for JavaScript**
 
-**Compatibility:** - **Node.js:** 7.0.0+ (CJS & ESM)
-- **Browsers:** ES2015+ (IIFE via CDN or `<script>` tags)
-- **Bundlers:** Webpack, Rollup, Vite, etc.
+The pre-bundled, browser-friendly distribution of the excellent [**await-me-ts**](https://www.npmjs.com/package/await-me-ts) library.
 
----
+Stop writing repetitive `try/catch` everywhere.  
+Write clean, linear, readable code that handles errors declaratively.
 
-## 🏗️ The "Big Three" Derivatives
-For 90% of use cases, these pre-configured utilities provide the cleanest syntax.
+### Key Features at a Glance
 
-### 1. `valueOf`
-Returns the data or `false` on failure.
-* **Best for:** Standard data fetching where `false` isn't a valid piece of data.
+- Works in **Node.js ≥ 7** (CJS & ESM)  
+- Works in **modern browsers** (ES2015+)  
+- Supports direct `<script>` tag usage (global `WaitForMe`)  
+- Tiny footprint (~1.8–2.4 kB minified + gzipped)  
+- Zero runtime dependencies  
+- Multiple return styles: data-or-false, Go-style, boolean, result object…  
+- Smart conditional error handling (waterfall style)  
+- Built-in support for logging & side-effect callbacks
 
-```javascript
-const user = await valueOf(fetchUser(1), "User not found");
-if (!user) return; 
-console.log(user.name);
+### Looking for the TypeScript / modern Node source?
 
+→ Go to [**await-me-ts** — the original TypeScript-first engine](https://www.npmjs.com/package/await-me-ts)
+
+## Quick Start — The Most Popular Helpers
+
+```js
+// ESM
+import { valueOf, isSuccess, toResult, create, STYLES } from 'await-me';
+
+// CommonJS
+const { valueOf, isSuccess, toResult, create, STYLES } = require('await-me');
+
+// Global script tag
+<script src="https://cdn.jsdelivr.net/npm/await-me/dist/index.global.js"></script>
+// Then use: WaitForMe.valueOf(...)
 ```
 
-### 2. `isSuccess`
+### The "Big Three" Helpers
 
-Returns a simple `boolean`.
+| Helper        | Returns on Success              | Returns on Failure              | Best for                                      | Safe with `false`/`0`/`null`? |
+|---------------|---------------------------------|---------------------------------|-----------------------------------------------|-------------------------------|
+| `valueOf`     | the value                       | `false`                         | Most data fetching                            | **No**                        |
+| `isSuccess`   | `true`                          | `false`                         | Mutations, side-effects, status checks        | **Yes**                       |
+| `toResult`    | `{ success: true, data: value }`| `{ success: false, error }`     | When falsy values are valid results           | **Yes**                       |
 
-* **Best for:** Fire-and-forget actions or simple validation.
+### Real-world JavaScript examples
 
-```javascript
-if (await isSuccess(db.users.delete(id), { success: "Deleted!" })) {
-    notify("User removed");
+```js
+// 1. Classic data fetch (most common pattern)
+const profile = await valueOf(
+  fetch(`/api/users/${userId}`).then(r => r.json()),
+  "Could not load user profile"
+);
+
+if (!profile) {
+  showErrorMessage("Profile not available");
+  return;
 }
 
-```
+document.getElementById('name').textContent = profile.name;
 
-### 3. `toResult`
+// 2. Mutation / side-effect only (fire-and-forget style)
+if (await isSuccess(
+  fetch('/api/cart', { method: 'POST', body: JSON.stringify(items) }),
+  {
+    success: "Items added to cart!",
+    error:   "Failed to update cart"
+  }
+)) {
+  updateCartBadge();
+}
 
-Returns an object: `{ success: boolean; data: any | null; error: any | null }`.
+// 3. When falsy values are meaningful
+const result = await toResult(fetch('/api/feature-flags').then(r => r.json()));
 
-* **Best for:** APIs that might return `false` or `0` as valid successful data.
+if (!result.success) {
+  console.warn("Feature flags unavailable", result.error);
+  return;
+}
 
----
+const darkMode = result.data?.darkMode ?? false;
+document.body.classList.toggle('dark', darkMode);
 
-## 🚦 Understanding `STYLES`
-
-The `returnStyle` determines the shape of the output when using `createAsyncHandler`.
-
-| Style | Success Output | Failure Output | Use Case |
-| --- | --- | --- | --- |
-| `STYLES.GO_STYLE` | `[null, T]` | `[Error, null]` | Classic Go-lang pattern. |
-| `STYLES.FALSE_STYLE` | `T` | `false` | Data-or-False (Shielding logic). |
-| `STYLES.BOOLEAN` | `true` | `false` | Pure status checks. |
-| `STYLES.ONLY_ERROR` | `0` | `1` | Unix-style exit codes. |
-
----
-
-## ⚙️ Advanced Control: `createAsyncHandler`
-
-### 🌊 The Waterfall: `conditionalHandlerChain`
-
-The `conditionalHandlerChain` follows a **"First Match Wins"** logic. It iterates through your array of handlers and stops as soon as one `ifTrue` returns `true`.
-
-**Key Behaviors to Remember:**
-
-1. **Stop on Match:** Once a condition is met, no subsequent handlers in the chain are checked.
-2. **Shielding the Default:** If a handler matches, the `defaultHandler` is **not** executed. This is perfect for silencing "expected" errors (like 404s).
-3. **Fallthrough:** If no conditions match, the `defaultHandler` runs (if defined).
-
-### Example: Multi-Stage Handling
-
-```javascript
-const { createAsyncHandler, STYLES } = require('await-me');
-
-const safeFetch = createAsyncHandler({
-    returnStyle: STYLES.FALSE_STYLE,
-    conditionalHandlerChain: [
-        {
-            ifTrue: (err) => err.code === 404,
-            doIt: () => console.warn("Resource missing.")
-        }
-    ],
-    defaultHandler: (err) => reportToSentry(err)
+// 4. Using custom handler with conditional shielding
+const safeApiCall = create({
+  returnStyle: STYLES.FALSE_STYLE,
+  conditionalHandlerChain: [
+    {
+      ifTrue: err => err?.status === 404 || err?.code === 404,
+      doIt:  () => console.log("Resource not found — silent skip")
+    },
+    {
+      ifTrue: err => err?.status === 401 || err?.code === 401,
+      doIt:  () => {
+        console.warn("Session expired");
+        window.location.href = '/login';
+      }
+    },
+    {
+      ifTrue: err => err?.status === 429,
+      doIt:  () => showToast("Rate limit hit — please wait 60s")
+    }
+  ],
+  defaultHandler: err => {
+    console.error("Critical API error:", err);
+    reportErrorToSentry(err);
+  }
 });
 
+const data = await safeApiCall(fetch('/api/private/stats'));
+if (!data) return; // already smartly handled
 ```
 
-## 🛠️ Performance & Environment
+## All Available Return Styles
 
-* **Target:** ES2015 (minified and bundled).
-* **Bundle Size:** Ultra-lightweight with zero external runtime dependencies (core logic is inlined).
+```js
+const customHandler = create({
+  returnStyle: STYLES.FALSE_STYLE,    // ← most popular
+  // or STYLES.GO_STYLE
+  // or STYLES.BOOLEAN
+  // or STYLES.ONLY_ERROR
+  // or STYLES.ERROR_STYLE (advanced)
+});
+```
+
+| Style           | Success return           | Failure return          | Typical usage feeling                     |
+|-----------------|--------------------------|-------------------------|-------------------------------------------|
+| `FALSE_STYLE`   | value                    | `false`                 | `if (!result) return` — very natural      |
+| `GO_STYLE`      | `[null, value]`          | `[err, null]`           | Classic Go/Rust explicit error handling   |
+| `BOOLEAN`       | `true`                   | `false`                 | Pure success/failure flag                 |
+| `ONLY_ERROR`    | `0`                      | `1`                     | Unix-style exit codes (rare in JS)        |
+| `ERROR_STYLE`   | value                    | the Error object        | Middleware + later throw (advanced)       |
+
+## Go-style example (very popular among backend devs)
+
+```js
+const [err, user] = await create({ returnStyle: STYLES.GO_STYLE })(
+  fetchUserFromApi(userId)
+);
+
+if (err) {
+  if (err.code === 404) return showNotFound();
+  console.error("User fetch failed", err);
+  return;
+}
+
+// happy path — no try/catch needed
+renderUserProfile(user);
+```
+
+## Smart Logging & Side Effects
+
+All main helpers accept a second argument:
+
+```js
+string                          // simple log message
+{ success?: string|object, error?: string|object }   // structured
+```
+
+```js
+// Simple string
+await valueOf(saveDraft(), "Draft save failed");
+
+// Structured + side effects
+await isSuccess(updateSettings(settings), {
+  success: {
+    fn: () => toast.success("Settings updated"),
+    // you can also pass params: [userId, newTheme]
+  },
+  error: "Failed to save settings — try again"
+});
+
+// Multiple actions on error
+await valueOf(fetchImportantData(), {
+  error: [
+    "Critical data fetch failed",
+    { fn: reportToSentry, params: ["data_fetch_failed"] },
+    { fn: showCriticalErrorModal }
+  ]
+});
+```
+
+## Installation
+
+```bash
+npm install await-me
+# or
+yarn add await-me
+# or
+pnpm add await-me
+```
+
+### CDN (quick prototyping / no build step)
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/await-me@latest/dist/index.global.js"></script>
+
+<script>
+  const { valueOf, isSuccess } = WaitForMe;
+
+  (async () => {
+    const data = await valueOf(fetch('/api/data').then(r => r.json()));
+    console.log(data ?? 'Failed to load');
+  })();
+</script>
+```
+
+## Philosophy & Trade-offs
+
+**Love it because:**
+
+- Removes 80–90% of `try/catch` boilerplate
+- Very linear, readable code
+- Excellent for expected errors (404, 403, 429, validation…)
+- Tiny size, no dependencies
+- Works everywhere modern JS runs
+
+**Keep in mind:**
+
+- `valueOf` is **not safe** if legitimate result can be `false`/`null`/`0`
+- Conditional chain = **first match wins** (order matters!)
+- No built-in retry/timeout (combine with your favorite tools)
+- Young library — expect some evolution in 2026
+
+Shield your awaits and enjoy cleaner code! 🛡️✨
