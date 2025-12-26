@@ -1,6 +1,6 @@
 {
   "name": "await-me",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Browser-compatible, ES2015 target distribution of await-me-ts. Supports Node.js 7+.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -10,6 +10,23 @@
   "engines": {
     "node": ">=7.0.0"
   },
+  "browserslist": [
+    "defaults and fully supports es6-module",
+    "maintained node versions",
+    "not dead"
+  ],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "async",
+    "error-handling",
+    "browser",
+    "node",
+    "legacy-support",
+    "promises"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
