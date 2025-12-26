@@ -1,7 +1,7 @@
 {
   "name": "await-me",
-  "version": "1.0.5",
-  "description": "Browser-compatible, ES2015 target distribution of await-me-ts. Supports Node.js 7+.",
+  "version": "1.0.6",
+  "description": "Production-ready, zero-dependency declarative async error handling for JavaScript & Node.js. Browser-compatible wrapper for await-me-ts.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -9,6 +9,10 @@
   "types": "./dist/index.d.ts",
   "engines": {
     "node": ">=7.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "release": "npm run build && npm version patch && npm publish"
   },
   "browserslist": [
     "defaults and fully supports es6-module",
@@ -27,18 +31,8 @@
     "legacy-support",
     "promises"
   ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "script": "./dist/index.global.js"
-    }
-  },
-  "scripts": {
-    "build": "tsup",
-    "release": "npm run build && npm version patch && npm publish"
-  },
+  "author": "311ecode",
+  "license": "MIT",
   "dependencies": {
     "await-me-ts": "^1.0.1"
   },
