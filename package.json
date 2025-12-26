@@ -1,6 +1,6 @@
 {
   "name": "await-me",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Production-ready, zero-dependency declarative async error handling for JavaScript & Node.js. Browser-compatible wrapper for await-me-ts.",
   "type": "module",
   "main": "./dist/index.cjs",

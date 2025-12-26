@@ -14,6 +14,8 @@ const mockFetch = (shouldSucceed, data, errorCode) =>
         }, 50);
     });
 
+    
+
 async function runAdHocTest() {
     console.log("🚀 Starting Ad-Hoc Test for await-me Bundle\n");
 
